@@ -32,15 +32,25 @@ private:
 		socket_.async_read_some(boost::asio::buffer(data_, max_length),
 			[this, self](boost::system::error_code ec, std::size_t length) {
 			if (!ec) {
-				unsigned short len;
-				memcpy(&len, data_, sizeof(short));
-				handle_cmd(data_, len);
+				/* We're not using the read length as sometimes o2jam thinks
+				this is wrong lol, so we go by byte 1 of the payload */
+				handle_cmd(data_);
 			}
 		});
 	}
 
-	void handle_cmd(unsigned char payload[], std::size_t len) {
-		if (!memcmp(payload + 2, "\xf1\x03", 2)) {
+	void handle_cmd(unsigned char payload[]) {
+		/* Setting up the command variables, I'm not using a struct
+		as I'll have to send the whole payload again anyways and this'll
+		make it harder*/
+		unsigned short len;
+		memcpy(&len, payload, sizeof(unsigned short));
+		unsigned short cmd;
+		memcpy(&cmd, payload + 2, sizeof(unsigned short));
+
+		switch (cmd) {
+		case 0x03f1:
+		{
 			std::cout << "LOGIN REQUEST"; utils::print_hex(payload, len);
 			unsigned char packet_bytes[] = {
 				0x37, 0x00, 0xf2, 0x03, 0x02, 0x00, 0x00, 0x5d,
@@ -51,11 +61,11 @@ private:
 				0x67, 0xb5, 0xaa, 0xe1, 0x8b, 0x5d, 0x7c, 0x7b,
 				0x2a, 0xac, 0x22, 0xc3, 0x02, 0xf8, 0x1e
 			};
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xf3\x03", 2)) {
+		case 0x03f3:
+		{
 			std::cout << "LOGIN REQUEST NO 2"; utils::print_hex(payload, len);
 			unsigned char packet_bytes[] = {
 				0x37, 0x00, 0xf4, 0x03, 0x40, 0xba, 0x11, 0x36,
@@ -66,47 +76,51 @@ private:
 				0x0d, 0x40, 0x7b, 0x78, 0x64, 0x2a, 0xc9, 0xc5,
 				0x19, 0xcc, 0xaa, 0x7d, 0xb1, 0x65, 0xef
 			};
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xf0\xff", 2)) {
+		case 0xfff0:
+		{
 			std::cout << "LOGOUT/IDLE REQUEST"; utils::print_hex(payload, len);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xec\x03", 2)) {
+		case 0x03ec:
+		{
 			std::cout << "SOMETHING AFTER LOGIN???"; utils::print_hex(payload, len);
 			unsigned char packet_bytes[] = {
 				0x10, 0x00, 0xed, 0x03, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x87, 0x53, 0x00, 0x00
 			};
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xea\x03", 2)) {
+		case 0x03ea:
+		{
 			std::cout << "LOADING Channel1.spt..."; utils::print_hex(payload, len);
 
-			ZeroMemory(data_, max_length);
 			int sz = utils::fcopy(data_, "./Spt/Channel1.spt", 0);
 			do_write(sz);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xbe\x0f", 2)) {
+		case 0x0fbe:
+		{
 			std::cout << "LOADING MusicList.spt..."; utils::print_hex(payload, len);
 
-			ZeroMemory(data_, max_length);
 			int sz = utils::fcopy(data_, "./Spt/MusicList.spt", 6);
 			do_write(sz);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xd0\x07", 2)) {
+		case 0x07d0:
+		{
 			std::cout << "LOADING D007.spt..."; utils::print_hex(payload, len);
 
-			ZeroMemory(data_, max_length);
 			int sz = utils::fcopy(data_, "./Spt/D007.spt", 20);
 			do_write(sz);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xd2\x07", 2)) {
+		case 0x07d2:
+		{
 			std::cout << "LOADING D207.spt..."; utils::print_hex(payload, len);
-
 			char packet_bytes[] = {
 				0x37, 0x00, 0xdd, 0x07, 0x8c, 0x6e, 0x3f, 0x8f,
 				0xc1, 0x91, 0xa7, 0x00, 0x3f, 0x8c, 0x7d, 0x8e,
@@ -117,86 +131,75 @@ private:
 				0x63, 0x6b, 0x43, 0x68, 0x65, 0x6e, 0x00
 			};
 
-			ZeroMemory(data_, max_length);
 			memcpy(data_, packet_bytes, sizeof(packet_bytes));
 			int sz = utils::fcopy(data_ + 55, "./Spt/D207.spt", 20);
 			do_write(sz + sizeof(packet_bytes));
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xa4\x13", 2)) {
+		case 0x13a4:
+		{
 			std::cout << "NO IDEA BUT WE CAN RESPOND"; utils::print_hex(payload, len);
 
-			char packet_bytes[] = {
+			unsigned char packet_bytes[] = {
 				0x08, 0x00, 0xa5, 0x13, 0xb3, 0x11, 0x01, 0x00
 			};
 
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xd4\x07", 2)) {
+		case 0x07d4:
+		{
 			std::cout << "ROOM CREATION, Name is " << data_ + 4 << std::endl;
 
-			char packet_bytes[] = {
+			unsigned char packet_bytes[] = {
 				0x0d, 0x00, 0xd6, 0x07, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00
 			};
 
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
 			flag = true;
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xf0\xff", 2)) {
-			std::cout << "ECHO??LOGOUT??HEARTBEAT?? REQUEST, IGNORING..."; utils::print_hex(payload, len);
-			//skip the write, we don't need to??
-			do_read();
-		}
-		else if (!memcmp(payload + 2, "\xe8\x07", 2)) {
+		case 0x07e8:
+		{
 			std::cout << "GOT A MASSIVE PAYLOAD, I'M ASSUMING THIS IS THE KEY STAMP";
 			unsigned char packet_bytes[] = {
 				0x04, 0x00, 0xe9, 0x07
 			};
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xe8\x03", 2)) {
+		case 0x03e8:
+		{
 			std::cout << "LOGIN SOMETHING???"; utils::print_hex(payload, len);
-			char packet_bytes[] = {
+			unsigned char packet_bytes[] = {
 				0x08, 0x00, 0xe9, 0x03, 0x00, 0x00, 0x00, 0x00
 			};
 
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xef\x03", 2)){
+		case 0x03ef:
+		{
 			std::cout << "GOT LOGIN CREDENTIALS"; utils::print_hex(payload, len);
 			unsigned char packet_bytes[] = {
 				0x0c, 0x00, 0xf0, 0x03, 0x00, 0x00, 0x00, 0x00,
 				0xee, 0x60, 0x01, 0x00
 			};
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
+			o2jam_write(packet_bytes);
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xe8\x03", 2)) {
-			std::cout << "CHANNEL LOGIN THINGY???"; utils::print_hex(payload, len);
-			char packet_bytes[] = {
-				0x08, 0x00, 0xe9, 0x03, 0x00, 0x00, 0x00, 0x00
-			};
 
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			do_write(sizeof(packet_bytes));
-		}
-		else if (!memcmp(payload + 2, "\xa0\x0f", 2)) {
+		//song select related commands??
+		case 0x0fa0:
+		{
 			std::cout << "SONG SELECT"; utils::print_hex(payload, len);
 
 			//set 3rd bit to a1 and send
 			data_[2] = 0xa1;
+
 			if (!flag) {
-				do_write(len);
+				do_write(data_[0]);
 			}
 			else {
 				auto cp = std::make_unique<unsigned char[]>(len);
@@ -204,53 +207,108 @@ private:
 				repl_stack.push(std::move(cp));
 				do_read();
 			}
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xa4\x0f", 2)) {
+		case 0x0fa4:
+		{
 			std::cout << "INITIAL ROOM STUFF, WAITING FOR LOAD..."; utils::print_hex(payload, len);
-			char packet_bytes[] = "\x06\x00\xa5\x0f\x00\x00";
+			unsigned char packet_bytes[] = "\x06\x00\xa5\x0f\x00\x00";
 
 			auto cp = std::make_unique<unsigned char[]>(packet_bytes[0]);
 			memcpy(cp.get(), packet_bytes, packet_bytes[0]);
 			repl_stack.push(std::move(cp));
 			do_read();
+			break;
 		}
-		else if (!memcmp(payload + 2, "\xb7\x0f", 2)) {
+		case 0x0fb7:
+		{
 			std::cout << "FINISHED LOADING ROOM, SENDING ALL BUFFERED REPLIES"; utils::print_hex(payload, len);
-			char packet_bytes[] = "\x09\x00\xb8\x0f\x01\x00\x00\x00\x00";
-
-			ZeroMemory(data_, max_length);
-			memcpy(data_, packet_bytes, packet_bytes[0]);
-			do_write(packet_bytes[0]);
+			unsigned char packet_bytes[] = "\x09\x00\xb8\x0f\x01\x00\x00\x00\x00";
+			o2jam_write(packet_bytes);
 
 			while (!repl_stack.empty()) {
-
-				ZeroMemory(data_, max_length);
-				memcpy(data_, repl_stack.top().get(), repl_stack.top().get()[0]);
-				do_write(repl_stack.top()[0]);
+				o2jam_write(repl_stack.top().get());
 
 				repl_stack.pop();
 			}
 			flag = false;
-
+			break;
 		}
-		else if (!memcmp(payload + 2, "\x71\x17", 2)) {
+		case 0x0faa:
+		{
+			std::cout << "SONG PLAY START?"; utils::print_hex(payload, len);
+			unsigned char packet_bytes[] = {
+				0x0c, 0x00, 0xab, 0x0f, 0x00, 0x00, 0x00, 0x00,
+				0x93, 0x21, 0x74, 0x25
+			};
+			o2jam_write(packet_bytes);
+
+			break;
+		}
+		case 0x0fac:
+		{
+			std::cout << "SONG PLAY CMD 2"; utils::print_hex(payload, len);
+			unsigned char packet_bytes[] = {
+				0x05, 0x00, 0xad, 0x0f, 0x00
+			};
+			o2jam_write(packet_bytes);
+
+			break;
+		}
+		case 0x0fb5:
+		{
+			std::cout << "SONG QUIT?"; utils::print_hex(payload, len);
+			unsigned char packet_bytes[] = {
+				0x09, 0x00, 0xb6, 0x0f, 0x00, 0x1e, 0x00, 0x00,
+				0x00
+			};
+			o2jam_write(packet_bytes);
+
+			//need to wait for b7 command again...
+			flag = true;
+
+			break;
+		}
+		case 0x0fae:
+		{
+			std::cout << "SOME SONG STATUS THING, IGNORING"; utils::print_hex(payload, len);
+			do_read();
+			break;
+		}
+		case 0x1771:
+		{
 			std::cout << "TCP echo???"; utils::print_hex(payload, len);
 			//echo back
 			do_write(4);
+			break;
 		}
-		else {
+		default:
+		{
 			std::cout << "UNKNOWN"; utils::print_hex(payload, len);
 			//do_write(len);
+			do_read();
+			break;
+		}
 		}
 	}
 
-	void do_write(std::size_t length){
+	void o2jam_write(unsigned char payload[]) {
+		//actuall don't need to zero mem, as we are only writing to length anyway
+
+		//first 2 bytes tells us length
+		unsigned short len;
+		memcpy(&len, payload, sizeof(unsigned short));
+		memcpy(data_, payload, payload[0]);
+		do_write(len);
+	}
+
+	void do_write(std::size_t length) {
 		std::cout << "SENDING ";
 		utils::print_hex(data_, length);
 		auto self(shared_from_this());
 		boost::asio::async_write(socket_,
 			boost::asio::buffer(data_, length),
-			[this,self](boost::system::error_code ec, std::size_t length) {
+			[this, self](boost::system::error_code ec, std::size_t length) {
 			if (!ec) {
 				do_read();
 			}
@@ -267,11 +325,11 @@ private:
 	bool flag;
 
 	tcp::socket socket_;
-	enum { max_length = 10248}; //max payload size we send
+	enum { max_length = 10248 }; //max payload size we send
 	unsigned char data_[max_length];
 };
 
-class server{
+class server {
 public:
 	server(boost::asio::io_context& io_context, short port)
 		: acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
@@ -280,7 +338,7 @@ public:
 	}
 
 private:
-	void do_accept(){
+	void do_accept() {
 		acceptor_.async_accept(
 			[this](boost::system::error_code ec, tcp::socket socket)
 		{
@@ -294,13 +352,13 @@ private:
 	tcp::acceptor acceptor_;
 };
 
-int main(){
-	try{
+int main() {
+	try {
 		boost::asio::io_context io_context;
 		server s(io_context, SERVER_PORT);
 		io_context.run();
 	}
-	catch (std::exception& e){
+	catch (std::exception& e) {
 		std::cerr << e.what() << std::endl;
 	}
 
