@@ -1,36 +1,44 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include <string>
+#include <istream>
+#include <windows.h>
 
 #include "utils.h"
+#define MAX_PRINT 100
 
 namespace utils {
 	void print_hex(unsigned char cmd[], std::size_t len) {
+		int floor_len = len > MAX_PRINT ? MAX_PRINT : len;
 		std::cout << " ";
-		for (int i = 0; i < len; i++) {
+		for (int i = 0; i < floor_len; i++) {
 			unsigned char byte = cmd[i];
 			std::cout << " " << std::hex << (int)byte;
 		}
+		if (len > MAX_PRINT) std::cout << "...";
 		std::cout << std::endl;
 	}
 
-	int fcopy(unsigned char *res, const char path[]) {
-		std::ifstream file;
-		file.exceptions(std::ifstream::badbit);
+	int fcopy(unsigned char res[], const char path[], size_t offset) {
+		std::ifstream f;
+
+		// Set exceptions to be thrown on failure
+		f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
 		try {
-			file.open(path);
+			f.open(path, std::ios::binary | std::ios::ate);
 		}
-		catch (const std::ifstream::failure& e) {
-			std::cout << "Error opening " << path << std::endl;
-			abort();
+		catch (std::system_error& e) {
+			std::cerr << e.code().message() << std::endl;
 		}
 
-		std::string contents((std::istreambuf_iterator<char>(file)),
-			std::istreambuf_iterator<char>());
+		f.seekg(offset, std::ios::beg);
+		std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(f), {});
+		buffer.reserve(10284);
 
-		int size = contents.size();
-		memcpy(res, contents.c_str(), size);
-		file.close();
+		std::copy(buffer.begin(), buffer.end(), res);
 
-		return size;
+		return buffer.size();
 	}
 }

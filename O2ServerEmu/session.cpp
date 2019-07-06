@@ -85,26 +85,53 @@ private:
 			std::cout << "LOADING Channel1.spt..."; utils::print_hex(cmd, len);
 
 			ZeroMemory(data_, max_length);
-			int sz = utils::fcopy(data_, "./Spt/Channel1.spt");
+			int sz = utils::fcopy(data_, "./Spt/Channel1.spt", 0);
 			do_write(sz);
 		}
 		else if (!memcmp(cmd, "\x04\x00\xbe\x0f", len)) {
 			std::cout << "LOADING MusicList.spt..."; utils::print_hex(cmd, len);
 
 			ZeroMemory(data_, max_length);
-			int sz = utils::fcopy(data_, "./Spt/MusicList.spt");
+			int sz = utils::fcopy(data_, "./Spt/MusicList.spt", 6);
 			do_write(sz);
 		}
 		else if (!memcmp(cmd, "\x04\x00\xd0\x07", len)) {
 			std::cout << "LOADING D007.spt..."; utils::print_hex(cmd, len);
 
 			ZeroMemory(data_, max_length);
-			int sz = utils::fcopy(data_, "./Spt/D007.spt");
-			//data is offset by 10 for some reason
-			memmove(data_, data_ + 10, sizeof(data_) - 10);
+			int sz = utils::fcopy(data_, "./Spt/D007.spt", 20);
 			do_write(sz);
 		}
-		else if (!memcmp(cmd, "\x13\x00\xd4\x07", len) && len > 4) {
+		else if (!memcmp(cmd, "\x04\x00\xd2\x07", len)) {
+			std::cout << "LOADING D207.spt..."; utils::print_hex(cmd, len);
+
+			char packet_bytes[] = {
+				0x37, 0x00, 0xdd, 0x07, 0x8c, 0x6e, 0x3f, 0x8f,
+				0xc1, 0x91, 0xa7, 0x00, 0x3f, 0x8c, 0x7d, 0x8e,
+				0x67, 0x97, 0x70, 0x4f, 0x32, 0x45, 0x6d, 0x75,
+				0x21, 0x20, 0x50, 0x6f, 0x77, 0x65, 0x72, 0x65,
+				0x64, 0x20, 0x42, 0x79, 0x20, 0x44, 0x65, 0x76,
+				0x20, 0x54, 0x65, 0x61, 0x6d, 0x20, 0x4a, 0x61,
+				0x63, 0x6b, 0x43, 0x68, 0x65, 0x6e, 0x00
+			};
+
+			ZeroMemory(data_, max_length);
+			memcpy(data_, packet_bytes, sizeof(packet_bytes));
+			int sz = utils::fcopy(data_ + 55, "./Spt/D207.spt", 20);
+			do_write(sz + sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd, "\x04\x00\xa4\x13", 4)) {
+			std::cout << "NO IDEA BUT WE CAN RESPOND"; utils::print_hex(cmd, len);
+
+			char packet_bytes[] = {
+				0x08, 0x00, 0xa5, 0x13, 0xb3, 0x11, 0x01, 0x00
+			};
+
+			ZeroMemory(data_, max_length);
+			memcpy(data_, packet_bytes, sizeof(packet_bytes));
+			do_write(sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd + 1, "\x00\xd4\x07", 3) && len > 4) {
 			std::cout << "ROOM CREATION, Name is " << data_ + 4 << std::endl;
 
 			char packet_bytes[] = {
@@ -121,7 +148,7 @@ private:
 			//skip the write, we don't need to??
 			do_read();
 		}
-		else if (len > 100) {
+		else if (len > 400) {
 			std::cout << "GOT A MASSIVE PAYLOAD, I'M ASSUMING THIS IS THE KEY STAMP";
 			unsigned char packet_bytes[] = {
 				0x04, 0x00, 0xe9, 0x07
@@ -130,8 +157,18 @@ private:
 			memcpy(data_, packet_bytes, sizeof(packet_bytes));
 			do_write(sizeof(packet_bytes));
 		}
-		else {
-			std::cout << "NO IDEA, ASSUMING LOGIN REQUEST"; utils::print_hex(cmd, len);
+		else if (!memcmp(cmd, "\x12\x00\xe8\x03", 4) && len > 4) {
+			std::cout << "LOGIN SOMETHING???"; utils::print_hex(cmd, len);
+			char packet_bytes[] = {
+				0x08, 0x00, 0xe9, 0x03, 0x00, 0x00, 0x00, 0x00
+			};
+
+			ZeroMemory(data_, max_length);
+			memcpy(data_, packet_bytes, sizeof(packet_bytes));
+			do_write(sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd+1, "\x00\xef\x03", 3)){
+			std::cout << "GOT LOGIN CREDENTIALS"; utils::print_hex(cmd, len);
 			unsigned char packet_bytes[] = {
 				0x0c, 0x00, 0xf0, 0x03, 0x00, 0x00, 0x00, 0x00,
 				0xee, 0x60, 0x01, 0x00
@@ -139,6 +176,48 @@ private:
 			ZeroMemory(data_, max_length);
 			memcpy(data_, packet_bytes, sizeof(packet_bytes));
 			do_write(sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd + 1, "\x00\xe8\x03", 3)) {
+			std::cout << "CHANNEL LOGIN THINGY???"; utils::print_hex(cmd, len);
+			char packet_bytes[] = {
+				0x08, 0x00, 0xe9, 0x03, 0x00, 0x00, 0x00, 0x00
+			};
+
+			ZeroMemory(data_, max_length);
+			memcpy(data_, packet_bytes, sizeof(packet_bytes));
+			do_write(sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd, "\x08\x00\xa0\x0f", 4)) {
+			std::cout << "SONG SELECT"; utils::print_hex(cmd, len);
+
+			//set 3rd bit to a1 and send
+			data_[2] = 0xa1;
+			do_write(len);
+		}
+		else if (!memcmp(cmd, "\x08\x00\xa4\x0f\x00\x00\x00\x00", 8)) {
+			std::cout << "SONG SEL 2"; utils::print_hex(cmd, len);
+			char packet_bytes[] = "\x09\x00\xb8\x0f\x01\x00\x00\x00\x00";
+
+			ZeroMemory(data_, max_length);
+			memcpy(data_, packet_bytes, sizeof(packet_bytes));
+			do_write(sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd, "\x08\x00\xb7\x0f\x00\x00\x00\x00", 8)) {
+			std::cout << "SONG SEL 3"; utils::print_hex(cmd, len);
+			char packet_bytes[] = "\x06\x00\xa5\x0f\x00\x00";
+
+			ZeroMemory(data_, max_length);
+			memcpy(data_, packet_bytes, sizeof(packet_bytes));
+			do_write(sizeof(packet_bytes));
+		}
+		else if (!memcmp(cmd, "\x04\x00\x71\x17", 4)) {
+			std::cout << "TCP echo???"; utils::print_hex(cmd, len);
+			//echo back
+			do_write(4);
+		}
+		else {
+			std::cout << "UNKNOWN"; utils::print_hex(cmd, len);
+			//do_write(len);
 		}
 	}
 
