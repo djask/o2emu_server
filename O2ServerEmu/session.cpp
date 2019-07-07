@@ -121,19 +121,24 @@ private:
 		case 0x07d2:
 		{
 			std::cout << "LOADING D207.spt..."; utils::print_hex(payload, len);
-			char packet_bytes[] = {
-				0x37, 0x00, 0xdd, 0x07, 0x8c, 0x6e, 0x3f, 0x8f,
-				0xc1, 0x91, 0xa7, 0x00, 0x3f, 0x8c, 0x7d, 0x8e,
-				0x67, 0x97, 0x70, 0x4f, 0x32, 0x45, 0x6d, 0x75,
-				0x21, 0x20, 0x50, 0x6f, 0x77, 0x65, 0x72, 0x65,
-				0x64, 0x20, 0x42, 0x79, 0x20, 0x44, 0x65, 0x76,
-				0x20, 0x54, 0x65, 0x61, 0x6d, 0x20, 0x4a, 0x61,
-				0x63, 0x6b, 0x43, 0x68, 0x65, 0x6e, 0x00
-			};
+			char packet_bytes[] = "\x2e\x00\xdd\x07" \
+				//VÁ‘§(news), GBIC Encoded
+				"\x8c\x6e\x3f\x8f\xc1\x91" \
+				//string terminator
+				"\xa7\x00" \
+				//notice data
+				"server emu by djask for comp6841" \
+				"\x00";
 
-			memcpy(data_, packet_bytes, sizeof(packet_bytes));
-			int sz = utils::fcopy(data_ + 55, "./Spt/D207.spt", 20);
-			do_write(sz + sizeof(packet_bytes));
+			memcpy(data_, packet_bytes, packet_bytes[0]);
+			int sz = utils::fcopy(data_ + packet_bytes[0], "./Spt/D207.spt", 20);
+			do_write(sz + packet_bytes[0]);
+			break;
+		}
+		case 0x07dc:
+		{
+			std::cout << "GOT MSG " << payload + 4 << std::endl;
+			do_read();
 			break;
 		}
 		case 0x13a4:
