@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 #include <istream>
-#include <windows.h>
 
 #include "utils.h"
 #define MAX_PRINT 100

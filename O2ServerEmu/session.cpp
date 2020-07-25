@@ -27,7 +27,7 @@ public:
 
 private:
 	void do_read() {
-		ZeroMemory(data_, max_length);
+		memset(data_, max_length, 0);
 		auto self(shared_from_this());
 		socket_.async_read_some(boost::asio::buffer(data_, max_length),
 			[this, self](boost::system::error_code ec, std::size_t length) {
@@ -122,7 +122,7 @@ private:
 		{
 			std::cout << "LOADING D207.spt..."; utils::print_hex(payload, len);
 			char packet_bytes[] = "\x2e\x00\xdd\x07" \
-				//VÁ‘§(news), GBIC Encoded
+				//ï¿½Vï¿½ï¿½ï¿½ï¿½(news), GBIC Encoded
 				"\x8c\x6e\x3f\x8f\xc1\x91" \
 				//string terminator
 				"\xa7\x00" \
