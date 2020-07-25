@@ -4,6 +4,7 @@ Simple emulator program for the O2Jam client.
 
 ## Build
 Requires boost::asio library to build. Open and build in Visual Studio.
+On linux, run make in the O2ServerEmu directory. 
 
 ## Usage
 - Grab a copy of the O2jam client
