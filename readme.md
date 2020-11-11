@@ -1,6 +1,7 @@
 # O2Server Emulator
 
-Simple emulator program for the O2Jam client. 
+Simple emulator program for the O2Jam client. Open source implementation of the O2EMU server.
+Does not need visual basic to run. 
 
 ## Build
 Requires boost::asio library to build. Open and build in Visual Studio.
